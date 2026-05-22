@@ -1,0 +1,7 @@
+[kevinpinscoe]
+name=kevinpinscoe Go tools
+baseurl=https://kevinpinscoe.github.io/rpm
+enabled=1
+gpgcheck=1
+repo_gpgcheck=1
+gpgkey=https://kevinpinscoe.github.io/rpm/gpg.key

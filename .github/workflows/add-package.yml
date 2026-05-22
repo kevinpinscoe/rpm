@@ -1,0 +1,70 @@
+name: Add package
+
+on:
+  repository_dispatch:
+    types: [new-release]
+
+permissions:
+  contents: write
+
+jobs:
+  add:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Install createrepo_c and rpm tools
+        run: sudo apt-get install -y createrepo-c rpm
+
+      - name: Import GPG signing key
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: |
+          echo "$GPG_PRIVATE_KEY" | gpg --batch --import
+          FINGERPRINT=$(gpg --with-colons --list-secret-keys | awk -F: '/^fpr/{print $10; exit}')
+          echo "${FINGERPRINT}:6:" | gpg --import-ownertrust
+          mkdir -p ~/.gnupg
+          echo "pinentry-mode loopback"   >> ~/.gnupg/gpg.conf
+          echo "allow-loopback-pinentry" >> ~/.gnupg/gpg-agent.conf
+          gpg-connect-agent reloadagent /bye || true
+          # Cache passphrase in agent so rpmsign and gpg sign non-interactively
+          printf '%s' "$GPG_PASSPHRASE" | gpg --batch --pinentry-mode loopback \
+            --passphrase-fd 0 --clearsign --output /dev/null /dev/null 2>/dev/null || true
+          # Configure rpmmacros for rpmsign
+          cat > ~/.rpmmacros <<'EOF'
+          %_gpg_path /root/.gnupg
+          %_gpg_name kevin.inscoe@gmail.com
+          %_signature gpg
+          %__gpg /usr/bin/gpg
+          EOF
+
+      - name: Download, sign, and add .rpm files
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p /tmp/rpms packages
+          gh release download "${{ github.event.client_payload.tag }}" \
+            --repo "${{ github.event.client_payload.repo }}" \
+            --pattern "*.rpm" \
+            --dir /tmp/rpms
+          for rpm in /tmp/rpms/*.rpm; do
+            rpmsign --addsign "$rpm"
+            cp "$rpm" packages/
+          done
+
+      - name: Regenerate repo metadata
+        run: createrepo_c --update .
+
+      - name: Sign repo metadata
+        run: |
+          gpg --batch --pinentry-mode loopback \
+            --detach-sign --armor repodata/repomd.xml
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --quiet || git commit -m "add ${{ github.event.client_payload.repo }} ${{ github.event.client_payload.tag }}"
+          git push
