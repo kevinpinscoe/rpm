@@ -32,12 +32,12 @@ jobs:
           printf '%s' "$GPG_PASSPHRASE" | gpg --batch --pinentry-mode loopback \
             --passphrase-fd 0 --clearsign --output /dev/null /dev/null 2>/dev/null || true
           # Configure rpmmacros for rpmsign
-          cat > ~/.rpmmacros <<'EOF'
-          %_gpg_path /root/.gnupg
-          %_gpg_name kevin.inscoe@gmail.com
-          %_signature gpg
-          %__gpg /usr/bin/gpg
-          EOF
+          cat > ~/.rpmmacros <<EOF
+%_gpg_path ${HOME}/.gnupg
+%_gpg_name kevin.inscoe@gmail.com
+%_signature gpg
+%__gpg /usr/bin/gpg
+EOF
 
       - name: Download, sign, and add .rpm files
         env:
