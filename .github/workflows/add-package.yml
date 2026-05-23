@@ -25,12 +25,11 @@ jobs:
           FINGERPRINT=$(gpg --with-colons --list-secret-keys | awk -F: '/^fpr/{print $10; exit}')
           echo "${FINGERPRINT}:6:" | gpg --import-ownertrust
           mkdir -p ~/.gnupg
-          echo "pinentry-mode loopback"   >> ~/.gnupg/gpg.conf
-          echo "allow-loopback-pinentry" >> ~/.gnupg/gpg-agent.conf
-          gpg-connect-agent reloadagent /bye || true
-          # Cache passphrase in agent so rpmsign and gpg sign non-interactively
-          printf '%s' "$GPG_PASSPHRASE" | gpg --batch --pinentry-mode loopback \
-            --passphrase-fd 0 --clearsign --output /dev/null /dev/null 2>/dev/null || true
+          echo "pinentry-mode loopback" >> ~/.gnupg/gpg.conf
+          printf '%s\n%s\n' "allow-loopback-pinentry" "allow-preset-passphrase" > ~/.gnupg/gpg-agent.conf
+          gpg-connect-agent reloadagent /bye
+          KEYGRIP=$(gpg --with-keygrip --with-colons --list-secret-keys | awk -F: '/^grp/{print $10; exit}')
+          printf '%s' "$GPG_PASSPHRASE" | "$(gpgconf --list-dirs libexecdir)/gpg-preset-passphrase" --preset "$KEYGRIP"
           # Configure rpmmacros for rpmsign
           cat > ~/.rpmmacros <<EOF
 %_gpg_path ${HOME}/.gnupg
