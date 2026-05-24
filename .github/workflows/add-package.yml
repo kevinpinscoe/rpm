@@ -32,12 +32,12 @@ jobs:
             printf '%s' "$GPG_PASSPHRASE" | "$PRESET_BIN" --preset "$KEYGRIP"
           done < <(gpg --with-keygrip --with-colons --list-secret-keys | awk -F: '/^grp/{print $10}')
           # Configure rpmmacros for rpmsign
-          cat > ~/.rpmmacros <<EOF
-%_gpg_path ${HOME}/.gnupg
-%_gpg_name kevin.inscoe@gmail.com
-%_signature gpg
-%__gpg /usr/bin/gpg
-EOF
+          {
+            echo "%_gpg_path $HOME/.gnupg"
+            echo "%_gpg_name kevin.inscoe@gmail.com"
+            echo "%_signature gpg"
+            echo "%__gpg /usr/bin/gpg"
+          } > ~/.rpmmacros
 
       - name: Download, sign, and add .rpm files
         env:
