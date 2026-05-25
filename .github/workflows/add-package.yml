@@ -21,22 +21,21 @@ jobs:
           GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
         run: |
-          # Write agent config BEFORE first gpg call so agent starts with it
           mkdir -p ~/.gnupg && chmod 700 ~/.gnupg
-          printf 'allow-preset-passphrase\n' > ~/.gnupg/gpg-agent.conf
           echo "$GPG_PRIVATE_KEY" | gpg --batch --import
           FINGERPRINT=$(gpg --with-colons --list-secret-keys | awk -F: '/^fpr/{print $10; exit}')
           echo "${FINGERPRINT}:6:" | gpg --import-ownertrust
-          PRESET_BIN="$(gpgconf --list-dirs libexecdir)/gpg-preset-passphrase"
-          while IFS= read -r KEYGRIP; do
-            printf '%s' "$GPG_PASSPHRASE" | "$PRESET_BIN" --preset "$KEYGRIP"
-          done < <(gpg --with-keygrip --with-colons --list-secret-keys | awk -F: '/^grp/{print $10}')
-          # Configure rpmmacros for rpmsign
+          # Write passphrase to temp file; rpmsign and gpg read it via --passphrase-file
+          printf '%s' "$GPG_PASSPHRASE" > /tmp/gpg-passphrase.txt
+          chmod 600 /tmp/gpg-passphrase.txt
+          # %__gpg_sign_cmd overrides how rpmsign invokes gpg: loopback mode,
+          # passphrase from file — no TTY or agent needed in CI.
           {
             echo "%_gpg_path $HOME/.gnupg"
             echo "%_gpg_name kevin.inscoe@gmail.com"
             echo "%_signature gpg"
             echo "%__gpg /usr/bin/gpg"
+            echo "%__gpg_sign_cmd /usr/bin/gpg --batch --no-verbose --no-armor --no-tty --pinentry-mode loopback --passphrase-file /tmp/gpg-passphrase.txt -u \"%{_gpg_name}\" -sbo %{__signature_filename} %{__plaintext_filename}"
           } > ~/.rpmmacros
 
       - name: Download, sign, and add .rpm files
@@ -57,7 +56,10 @@ jobs:
         run: createrepo_c --update .
 
       - name: Sign repo metadata
-        run: gpg --batch --detach-sign --armor repodata/repomd.xml
+        run: |
+          gpg --batch --no-tty --pinentry-mode loopback \
+              --passphrase-file /tmp/gpg-passphrase.txt \
+              --detach-sign --armor repodata/repomd.xml
 
       - name: Commit and push
         run: |
