@@ -47,7 +47,7 @@ jobs:
           # Strip the key passphrase so rpmsign works without a TTY.
           # The agent authenticates using pinentry-env (provides old passphrase);
           # pinentry-env returns empty for the new/repeat prompts.
-          gpg --batch --yes --pinentry-mode loopback --passwd "$FINGERPRINT"
+          gpg --yes --pinentry-mode loopback --passwd "$FINGERPRINT"
 
           # Configure rpmmacros for rpmsign
           {
