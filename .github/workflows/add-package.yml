@@ -62,13 +62,6 @@ jobs:
             echo "%__gpg /usr/bin/gpg"
           } > ~/.rpmmacros
 
-      - name: Debug GPG setup
-        run: |
-          echo "=== /usr/bin/gpg first line ===" && head -1 /usr/bin/gpg
-          echo "=== pinentry-pass byte count ===" && wc -c < ~/.gnupg/.pinentry-pass
-          echo "=== test sign via agent ===" && echo "test" | gpg --batch --armor --sign --output /dev/null && echo "SIGN OK" || echo "SIGN FAILED"
-          echo "=== test sign with passphrase-fd (bypasses agent) ===" && echo "test" | /usr/bin/gpg.real --batch --pinentry-mode loopback --passphrase-fd 3 3< ~/.gnupg/.pinentry-pass --armor --sign --output /dev/null && echo "SIGN_DIRECT OK" || echo "SIGN_DIRECT FAILED"
-
       - name: Download, sign, and add .rpm files
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
