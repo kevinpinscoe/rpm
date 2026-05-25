@@ -62,6 +62,12 @@ jobs:
             echo "%__gpg /usr/bin/gpg"
           } > ~/.rpmmacros
 
+      - name: Debug GPG setup
+        run: |
+          echo "=== /usr/bin/gpg first line ===" && head -1 /usr/bin/gpg
+          echo "=== pinentry-pass byte count ===" && wc -c < ~/.gnupg/.pinentry-pass
+          echo "=== test sign via agent ===" && echo "test" | gpg --batch --armor --sign --output /dev/null && echo "SIGN OK" || echo "SIGN FAILED"
+
       - name: Download, sign, and add .rpm files
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
