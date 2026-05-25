@@ -45,19 +45,21 @@ jobs:
           echo "${FINGERPRINT}:6:" | gpg --import-ownertrust
 
           # rpmsign's default %__gpg_sign_cmd passes --passphrase-fd 3 and
-          # --pinentry-mode loopback to gpg, which both fail without a TTY.
-          # The wrapper strips those flags so gpg falls back to the agent,
-          # which uses pinentry-env above to supply the passphrase.
-          echo "IyEvYmluL2Jhc2gKYXJncz0oKTsgc2tpcF9uZXh0PTAKZm9yIGFyZyBpbiAiJEAiOyBkbwogIGlmIFsgIiRza2lwX25leHQiIC1lcSAxIF07IHRoZW4gc2tpcF9uZXh0PTA7IGNvbnRpbnVlOyBmaQogIGNhc2UgIiRhcmciIGluCiAgICAtLXBhc3NwaHJhc2UtZmQpIHNraXBfbmV4dD0xOyBjb250aW51ZSA7OwogICAgLS1waW5lbnRyeS1tb2RlKSBza2lwX25leHQ9MTsgY29udGludWUgOzsKICAgIC0tcGluZW50cnktbW9kZT0qKSBjb250aW51ZSA7OwogIGVzYWMKICBhcmdzKz0oIiRhcmciKQpkb25lCmV4ZWMgL3Vzci9iaW4vZ3BnICIke2FyZ3NbQF19Igo=" \
-            | base64 -d > ~/.local/bin/gpg-wrapper
-          chmod +x ~/.local/bin/gpg-wrapper
+          # --pinentry-mode loopback to gpg, both of which fail in CI without a TTY.
+          # Ubuntu's rpm ignores %__gpg_sign_cmd / %__gpg macro overrides in ~/.rpmmacros.
+          # Replace /usr/bin/gpg with a wrapper that strips those flags so the real gpg
+          # falls back to the gpg-agent, which uses pinentry-env to supply the passphrase.
+          sudo mv /usr/bin/gpg /usr/bin/gpg.real
+          echo "IyEvYmluL2Jhc2gKYXJncz0oKTsgc2tpcF9uZXh0PTAKZm9yIGFyZyBpbiAiJEAiOyBkbwogIGlmIFsgIiRza2lwX25leHQiIC1lcSAxIF07IHRoZW4gc2tpcF9uZXh0PTA7IGNvbnRpbnVlOyBmaQogIGNhc2UgIiRhcmciIGluCiAgICAtLXBhc3NwaHJhc2UtZmQpIHNraXBfbmV4dD0xOyBjb250aW51ZSA7OwogICAgLS1waW5lbnRyeS1tb2RlKSBza2lwX25leHQ9MTsgY29udGludWUgOzsKICAgIC0tcGluZW50cnktbW9kZT0qKSBjb250aW51ZSA7OwogIGVzYWMKICBhcmdzKz0oIiRhcmciKQpkb25lCmV4ZWMgL3Vzci9iaW4vZ3BnLnJlYWwgIiR7YXJnc1tAXX0iCg==" \
+            | base64 -d | sudo tee /usr/bin/gpg > /dev/null
+          sudo chmod +x /usr/bin/gpg
 
-          # Configure rpmmacros; %__gpg points to wrapper so rpmsign uses the agent
+          # Configure rpmmacros (still set %__gpg in case a future rpm version reads it)
           {
             echo "%_gpg_path $HOME/.gnupg"
             echo "%_gpg_name kevin.inscoe@gmail.com"
             echo "%_signature gpg"
-            echo "%__gpg $HOME/.local/bin/gpg-wrapper"
+            echo "%__gpg /usr/bin/gpg"
           } > ~/.rpmmacros
 
       - name: Download, sign, and add .rpm files
