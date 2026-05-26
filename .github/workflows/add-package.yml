@@ -80,7 +80,9 @@ jobs:
         run: createrepo_c --update .
 
       - name: Sign repo metadata
-        run: gpg --batch --no-tty --detach-sign --armor repodata/repomd.xml
+        run: |
+          rm -f repodata/repomd.xml.asc
+          gpg --batch --no-tty --detach-sign --armor repodata/repomd.xml
 
       - name: Commit and push
         run: |
