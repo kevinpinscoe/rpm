@@ -46,13 +46,3 @@ Each Go tool repo dispatches a `new-release` event to this repo when a tag is pu
 The `add-package.yml` workflow downloads the `.rpm` files from the GitHub release,
 signs them with `rpmsign`, regenerates the repo metadata with `createrepo_c`,
 signs `repomd.xml`, and pushes everything back to `main`.
-
-## Contributing & Reporting Issues
-
-Bug reports, feature requests, security disclosures, and contributions are all
-welcome. I keep these guidelines in one place for all my projects:
-
-- **How to contribute or report an issue:** https://github.com/kevinpinscoe/how-to-contribute
-- **Report a security vulnerability:** do not open a public issue. Use the
-  **"Report a vulnerability"** button on this repository's **Security** tab, or
-  see the [security policy](https://github.com/kevinpinscoe/how-to-contribute/blob/main/SECURITY.md).
