@@ -5,10 +5,13 @@ Fedora RPM repository for [kevinpinscoe](https://github.com/kevinpinscoe) Go too
 ## Install
 
 ```bash
-sudo dnf config-manager \
-  --add-repo https://kevinpinscoe.github.io/rpm/kevinpinscoe.repo
+sudo dnf config-manager addrepo \
+  --from-repofile=https://kevinpinscoe.github.io/rpm/kevinpinscoe.repo
 sudo dnf install get-wx
 ```
+
+That is the `dnf5` syntax used by Fedora 41 and later, which rejects `--add-repo`. On a
+`dnf4` system use `sudo dnf config-manager --add-repo https://kevinpinscoe.github.io/rpm/kevinpinscoe.repo`.
 
 Or manually:
 
@@ -21,11 +24,12 @@ sudo dnf install get-wx
 ## Available packages
 
 | Package | Description |
-|---|---|
+| --- | --- |
 | `get-wx` | Eastern Tennessee weather forecast fetcher |
 | `metar-tool` | METAR aviation weather decoder |
 | `skills-tui` | Interactive TUI skill chooser |
 | `aws-linux-memory-tools` | AWS Linux memory diagnostics |
+| `bao-policy-editor` | Terminal editor for OpenBao HCL ACL policies (installs `bpe`) |
 
 ## GPG key
 
