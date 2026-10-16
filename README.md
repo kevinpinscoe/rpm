@@ -50,3 +50,24 @@ Each Go tool repo dispatches a `new-release` event to this repo when a tag is pu
 The `add-package.yml` workflow downloads the `.rpm` files from the GitHub release,
 signs them with `rpmsign`, regenerates the repo metadata with `createrepo_c`,
 signs `repomd.xml`, and pushes everything back to `main`.
+
+Publications run one at a time (`concurrency: rpm-repo-publish`). A release dispatched while
+another is publishing waits, then builds on the `main` the first one pushed. Three limits
+remain:
+
+- **One waiting run.** GitHub keeps only one pending run per concurrency group. A third
+  release dispatched while one runs and one waits cancels the waiting run. It shows as
+  *cancelled*, not failed, and has to be dispatched again.
+- **Pushes by hand.** Pushing to `main` while an `Add package` run is in progress makes that
+  run's push fail. Merge README and other changes only when no run is active.
+- **Cache window.** Pages serves files with `max-age=600`. For up to ten minutes after a
+  publish, a client can get a `repomd.xml` and `repomd.xml.asc` from different publishes.
+  dnf then rejects the signature and skips the repository; it never installs anything
+  unverified.
+
+Old metadata is never deleted. The workflow runs `createrepo_c --update --retain-old-md 2`,
+and with the `createrepo_c` on the GitHub runner (0.17.3, Ubuntu 24.04) any positive
+`--retain-old-md` keeps **every** earlier generation of `repodata/`, not two. A cached
+`repomd.xml` therefore always finds the files it names. The cost is about 42 KB per publish.
+This does not fix the `repomd.xml` / `repomd.xml.asc` mismatch above, because those two files
+keep fixed names. If the runner's `createrepo_c` version changes, check this behaviour again.
