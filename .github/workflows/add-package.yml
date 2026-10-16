@@ -7,11 +7,26 @@ on:
 permissions:
   contents: write
 
+# One publication at a time. Every run rewrites the same branch and the same
+# repodata/, so the group is a constant, never per ref, tag or run, and a
+# running publication is never cancelled. GitHub keeps only one pending run
+# per group: a third release arriving while one runs and one waits cancels
+# the waiting run, which must then be re-dispatched.
+concurrency:
+  group: rpm-repo-publish
+  cancel-in-progress: false
+
 jobs:
   add:
     runs-on: ubuntu-latest
     steps:
+      # ref: main, not the default. Without it checkout uses github.sha, the
+      # commit current when the run was dispatched, so a run that waited in
+      # the concurrency queue would build on a stale main and its push would
+      # be rejected.
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: main
 
       - name: Install createrepo_c and rpm tools
         run: sudo apt-get install -y createrepo-c rpm
@@ -77,7 +92,12 @@ jobs:
           done
 
       - name: Regenerate repo metadata
-        run: createrepo_c --update .
+        # Keep old metadata files so a repomd.xml still cached by Pages
+        # (max-age=600) can resolve the files it names. With createrepo_c 0.17.3
+        # (Ubuntu 24.04) any positive --retain-old-md keeps EVERY old
+        # generation, not two: about 42 KB more per publish, accepted (FSM-46).
+        # Re-check this if the runner's createrepo_c version changes.
+        run: createrepo_c --update --retain-old-md 2 .
 
       - name: Sign repo metadata
         run: |
